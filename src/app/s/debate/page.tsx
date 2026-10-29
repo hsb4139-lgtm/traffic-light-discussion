@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { SignalLight } from "@/components/student/SignalLight";
 import { Lights, Logo } from "@/components/Logo";
 import { useStudentState } from "@/lib/useStudentState";
 import { GroupSignal } from "@/components/student/GroupSignal";
@@ -8,6 +10,7 @@ import { CriteriaWait, PersonalOpinion, Revote } from "@/components/student/Opin
 
 export default function StudentDebate() {
   const router = useRouter();
+  const [lightOpen, setLightOpen] = useState(false);
   const { state, offline, refresh } = useStudentState(() => router.replace("/s"));
 
   async function logout() {
@@ -25,6 +28,9 @@ export default function StudentDebate() {
         <span className="truncate font-jua text-xl">{state?.debate?.title}</span>
         <div className="flex-1" />
         {offline && <span className="rounded-full bg-stop-bg px-3 py-1 text-sm font-bold text-stop">연결이 끊겼어요…</span>}
+        <button className="btn btn-sm" onClick={() => setLightOpen(true)}>
+          🚦 내 의견 표현하기
+        </button>
         {me && (
           <span className="rounded-full bg-bg px-4 py-1.5 font-bold">
             {me.number}번 {me.name}
@@ -54,6 +60,7 @@ export default function StudentDebate() {
           <Waiting />
         )}
       </div>
+      {lightOpen && <SignalLight onClose={() => setLightOpen(false)} />}
     </main>
   );
 }
