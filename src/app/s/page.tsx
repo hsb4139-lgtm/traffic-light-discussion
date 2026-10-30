@@ -8,10 +8,12 @@ import { normalizeCode } from "@/lib/codes";
 type Step = "code" | "number" | "pin";
 const LAST_CODE = "ts_last_code";
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
+// 기본은 번호만 눌러 입장. PIN을 다시 쓰려면 NEXT_PUBLIC_REQUIRE_PIN=true
+const REQUIRE_PIN = process.env.NEXT_PUBLIC_REQUIRE_PIN === "true";
 const STEPS: [Step, string][] = [
   ["code", "수업 코드"],
   ["number", "내 번호"],
-  ["pin", "PIN"],
+  ...(REQUIRE_PIN ? [["pin", "PIN"] as [Step, string]] : []),
 ];
 
 export default function StudentJoin() {
@@ -55,13 +57,13 @@ export default function StudentJoin() {
     setStep("number");
   }
 
-  async function submitPin(p: string) {
+  async function submitPin(p: string, n = number) {
     setBusy(true);
     setMsg("");
     const res = await fetch("/api/s/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: normalizeCode(code), number, pin: p }),
+      body: JSON.stringify({ code: normalizeCode(code), number: n, pin: p }),
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) return router.replace("/s/debate");
@@ -119,11 +121,13 @@ export default function StudentJoin() {
                 <button
                   key={n}
                   className="panel h-20 font-jua text-4xl text-blue transition hover:border-sky active:scale-95"
+                  disabled={busy}
                   onClick={() => {
                     setNumber(n);
                     setPin("");
                     setMsg("");
-                    setStep("pin");
+                    if (REQUIRE_PIN) setStep("pin");
+                    else submitPin("", n);
                   }}
                 >
                   {n}

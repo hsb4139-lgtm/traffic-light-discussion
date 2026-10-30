@@ -6,14 +6,16 @@ import { fail, setStudentCookie } from "@/lib/student-session";
 
 const MAX_FAILS = 5;
 const LOCK_MINUTES = 5;
+// 기본은 번호만 눌러 입장. PIN을 다시 쓰려면 NEXT_PUBLIC_REQUIRE_PIN=true
+const REQUIRE_PIN = process.env.NEXT_PUBLIC_REQUIRE_PIN === "true";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const code = normalizeCode(String(body?.code ?? ""));
   const number = Number(body?.number);
   const pin = String(body?.pin ?? "");
-  if (code.length !== 6 || !Number.isInteger(number) || !/^\d{4}$/.test(pin)) {
-    return fail(400, "코드, 번호, PIN 4자리를 확인해요.");
+  if (code.length !== 6 || !Number.isInteger(number) || (REQUIRE_PIN && !/^\d{4}$/.test(pin))) {
+    return fail(400, REQUIRE_PIN ? "코드, 번호, PIN 4자리를 확인해요." : "코드와 번호를 확인해요.");
   }
 
   const db = adminClient();
@@ -29,6 +31,11 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
   if (!st) return fail(404, "번호를 다시 골라요.");
   const s = st as { id: string; pin_hash: string; failed_attempts: number; locked_until: string | null };
+
+  if (!REQUIRE_PIN) {
+    await setStudentCookie(s.id, classId);
+    return NextResponse.json({ ok: true });
+  }
 
   if (s.locked_until && new Date(s.locked_until) > new Date()) {
     const min = Math.ceil((new Date(s.locked_until).getTime() - Date.now()) / 60000);
